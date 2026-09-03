@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 app = FastAPI()
 
@@ -17,7 +19,7 @@ students = [
         "name": "John Doe",
         "age": 20,
         "course": "Python"
-    },  # <--- Added missing comma here
+    },
     {
         "id": 2,
         "name": "Jane Smith",
@@ -26,7 +28,7 @@ students = [
     }
 ]
 
-@app.get("/")
+@app.get("/api")
 def home():
     return {"message": "Welcome to the FastAPI application!"}
 
@@ -40,10 +42,16 @@ def get_student(student_id: int):
 @app.get("/students")
 def get_all_students(course: str = None):
     if course:
-        return[
+        return [
             student
-            for student in students 
+            for student in students
             if student["course"].lower() == course.lower()
         ]
     return students
-    
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse("Frontend/index.html")
+
+# Serve static files (CSS, JS) from the Frontend folder
+app.mount("/static", StaticFiles(directory="Frontend"), name="static")
