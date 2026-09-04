@@ -1,73 +1,18 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Management System</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RecoverAI — Payment Recovery</title><link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <div class="page-glow glow-one"></div>
-    <div class="page-glow glow-two"></div>
-
-    <div class="app-container">
-        <header class="app-header">
-            <div class="brand-mark" aria-hidden="true">SD</div>
-            <div class="header-copy">
-                <p class="eyebrow">Academic workspace</p>
-                <h1>Student Directory</h1>
-                <p id="welcome-message" class="subtitle">Connecting to FastAPI server...</p>
-            </div>
-            <div class="header-orb" aria-hidden="true"><span></span><span></span><span></span></div>
-        </header>
-
-        <main class="main-content">
-            <section class="controls-section">
-                <div class="control-heading">
-                    <div>
-                        <p class="eyebrow">Discover students</p>
-                        <h2>Find your people</h2>
-                    </div>
-                    <button id="reset-btn" class="btn btn-secondary">Reset view</button>
-                </div>
-                <div class="control-grid">
-                    <label class="field-group" for="course-filter">
-                        <span>Browse by course</span>
-                        <div class="input-wrap">
-                            <span class="input-icon" aria-hidden="true">⌕</span>
-                            <input type="text" id="course-filter" placeholder="Python, Java, Design…">
-                            <button id="filter-btn" class="btn btn-primary">Search</button>
-                        </div>
-                    </label>
-                    <label class="field-group" for="student-id-search">
-                        <span>Find by student ID</span>
-                        <div class="input-wrap">
-                            <span class="input-icon" aria-hidden="true">#</span>
-                            <input type="number" id="student-id-search" min="1" placeholder="Enter an ID">
-                            <button id="search-id-btn" class="btn btn-dark">Find</button>
-                        </div>
-                    </label>
-                </div>
-            </section>
-
-            <div id="status-message" class="status-message hidden"></div>
-
-            <section class="students-section">
-                <div class="section-heading">
-                    <div>
-                        <p class="eyebrow">Directory</p>
-                        <h2>Students</h2>
-                    </div>
-                    <span id="student-count" class="student-count">Loading…</span>
-                </div>
-                <div id="students-grid" class="students-grid">
-                    <div class="loading-card">Loading students…</div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <script src="/static/app.js"></script>
-</body>
-</html>
+<header><div><span class="tag">RAZORPAY AI BUILDATHON</span><h1>RecoverAI</h1><p>Agentic Payment Recovery Engine</p></div><div id="aiStatus" class="status">Checking AI…</div></header>
+<main>
+<section class="kpis"><article><small>Payments at risk</small><strong id="risk">₹0</strong></article><article><small>Recovery opportunities</small><strong id="count">0</strong></article><article><small>Actions executed</small><strong id="actions">0</strong></article><article><small>Recovery rate</small><strong id="rate">0%</strong></article></section>
+<section class="layout">
+<div class="panel"><div class="panel-head"><div><small>RECOVERY QUEUE</small><h2>Failed payments</h2></div><button onclick="loadAll()">Refresh</button></div><div id="payments"></div></div>
+<div class="panel"><div class="panel-head"><div><small>AGENT ACTIVITY</small><h2>Decision audit trail</h2></div></div><div id="history"><p class="muted">No recovery actions yet.</p></div></div>
+</section>
+<section class="panel explainer"><small>HOW IT WORKS</small><div class="steps"><span>1. Failed payment</span><b>→</b><span>2. LangChain analysis</span><b>→</b><span>3. Safe action</span><b>→</b><span>4. Audit outcome</span></div></section>
+</main>
+<div id="toast"></div><script src="/static/app.js"></script>
+</body></html>
