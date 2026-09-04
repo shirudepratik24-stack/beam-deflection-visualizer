@@ -179,7 +179,6 @@ function setupEventListeners() {
     drawSchematic();
   });
 }
-
 // Load Presets from API
 async function loadPresets() {
   try {
@@ -192,7 +191,7 @@ async function loadPresets() {
     presetsData.forEach((preset, idx) => {
       const opt = document.createElement('option');
       opt.value = idx;
-      opt.textContent = [] ;
+      opt.textContent = `[${preset.category}] ${preset.name}`;
       presetSelect.appendChild(opt);
     });
 
@@ -217,13 +216,13 @@ function loadPresetData(p) {
   momentOfInertiaInput.value = p.beam.moment_of_inertia;
 
   supportsList = p.supports.map((s, idx) => ({
-    id: S,
+    id: `S${idx + 1}`,
     type: s.type,
     position: s.position
   }));
 
   loadsList = p.loads.map((l, idx) => ({
-    id: L,
+    id: `L${idx + 1}`,
     type: l.type,
     magnitude: l.magnitude || 0.0,
     position: l.position !== undefined ? l.position : 0.0,
@@ -243,21 +242,21 @@ function renderSupportsTable() {
   supportsBody.innerHTML = '';
   supportsList.forEach((s, idx) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = 
+    tr.innerHTML = `
       <td>
-        <select class="sup-type" data-idx="">
-          <option value="pin" >Pin (Δy)</option>
-          <option value="roller" >Roller (Δy)</option>
-          <option value="fixed" >Fixed (Δy, θ)</option>
+        <select class="sup-type" data-idx="${idx}">
+          <option value="pin" ${s.type === 'pin' ? 'selected' : ''}>Pin (Δy)</option>
+          <option value="roller" ${s.type === 'roller' ? 'selected' : ''}>Roller (Δy)</option>
+          <option value="fixed" ${s.type === 'fixed' ? 'selected' : ''}>Fixed (Δy, θ)</option>
         </select>
       </td>
       <td>
-        <input type="number" class="sup-pos" data-idx="" value="" min="0" max="" step="0.2">
+        <input type="number" class="sup-pos" data-idx="${idx}" value="${s.position}" min="0" max="${beamConfig.length}" step="0.2">
       </td>
       <td>
-        <button class="btn-del" data-idx="" title="Remove support">&times;</button>
+        <button class="btn-del" data-idx="${idx}" title="Remove support">&times;</button>
       </td>
-    ;
+    `;
     supportsBody.appendChild(tr);
   });
 
@@ -295,43 +294,43 @@ function renderLoadsTable() {
     let posField = '';
 
     if (l.type === 'point') {
-      magField = <input type="number" class="load-mag" data-idx="" value="" step="1.0" placeholder="kN">;
-      posField = <input type="number" class="load-pos" data-idx="" value="" min="0" max="" step="0.2" placeholder="x (m)">;
+      magField = `<input type="number" class="load-mag" data-idx="${idx}" value="${l.magnitude}" step="1.0" placeholder="kN">`;
+      posField = `<input type="number" class="load-pos" data-idx="${idx}" value="${l.position}" min="0" max="${beamConfig.length}" step="0.2" placeholder="x (m)">`;
     } else if (l.type === 'udl') {
-      magField = <input type="number" class="load-mag" data-idx="" value="" step="1.0" placeholder="kN/m">;
-      posField = <div style="display:flex;gap:4px;">
-        <input type="number" class="load-x1" data-idx="" value="" min="0" step="0.2" placeholder="x1">
-        <input type="number" class="load-x2" data-idx="" value="" min="0" step="0.2" placeholder="x2">
-      </div>;
+      magField = `<input type="number" class="load-mag" data-idx="${idx}" value="${l.start_magnitude}" step="1.0" placeholder="kN/m">`;
+      posField = `<div style="display:flex;gap:4px;">
+        <input type="number" class="load-x1" data-idx="${idx}" value="${l.start_pos}" min="0" step="0.2" placeholder="x1">
+        <input type="number" class="load-x2" data-idx="${idx}" value="${l.end_pos}" min="0" step="0.2" placeholder="x2">
+      </div>`;
     } else if (l.type === 'uvl') {
-      magField = <div style="display:flex;gap:4px;">
-        <input type="number" class="load-w1" data-idx="" value="" step="1.0" placeholder="w1">
-        <input type="number" class="load-w2" data-idx="" value="" step="1.0" placeholder="w2">
-      </div>;
-      posField = <div style="display:flex;gap:4px;">
-        <input type="number" class="load-x1" data-idx="" value="" min="0" step="0.2" placeholder="x1">
-        <input type="number" class="load-x2" data-idx="" value="" min="0" step="0.2" placeholder="x2">
-      </div>;
+      magField = `<div style="display:flex;gap:4px;">
+        <input type="number" class="load-w1" data-idx="${idx}" value="${l.start_magnitude}" step="1.0" placeholder="w1">
+        <input type="number" class="load-w2" data-idx="${idx}" value="${l.end_magnitude}" step="1.0" placeholder="w2">
+      </div>`;
+      posField = `<div style="display:flex;gap:4px;">
+        <input type="number" class="load-x1" data-idx="${idx}" value="${l.start_pos}" min="0" step="0.2" placeholder="x1">
+        <input type="number" class="load-x2" data-idx="${idx}" value="${l.end_pos}" min="0" step="0.2" placeholder="x2">
+      </div>`;
     } else if (l.type === 'moment') {
-      magField = <input type="number" class="load-mag" data-idx="" value="" step="1.0" placeholder="kN·m">;
-      posField = <input type="number" class="load-pos" data-idx="" value="" min="0" max="" step="0.2" placeholder="x (m)">;
+      magField = `<input type="number" class="load-mag" data-idx="${idx}" value="${l.magnitude}" step="1.0" placeholder="kN·m">`;
+      posField = `<input type="number" class="load-pos" data-idx="${idx}" value="${l.position}" min="0" max="${beamConfig.length}" step="0.2" placeholder="x (m)">`;
     }
 
-    tr.innerHTML = 
+    tr.innerHTML = `
       <td>
-        <select class="load-type" data-idx="">
-          <option value="point" >Point (kN)</option>
-          <option value="udl" >UDL (kN/m)</option>
-          <option value="uvl" >UVL (kN/m)</option>
-          <option value="moment" >Moment (kN·m)</option>
+        <select class="load-type" data-idx="${idx}">
+          <option value="point" ${l.type === 'point' ? 'selected' : ''}>Point (kN)</option>
+          <option value="udl" ${l.type === 'udl' ? 'selected' : ''}>UDL (kN/m)</option>
+          <option value="uvl" ${l.type === 'uvl' ? 'selected' : ''}>UVL (kN/m)</option>
+          <option value="moment" ${l.type === 'moment' ? 'selected' : ''}>Moment (kN·m)</option>
         </select>
       </td>
-      <td></td>
-      <td></td>
+      <td>${magField}</td>
+      <td>${posField}</td>
       <td>
-        <button class="btn-del" data-idx="" title="Remove load">&times;</button>
+        <button class="btn-del" data-idx="${idx}" title="Remove load">&times;</button>
       </td>
-    ;
+    `;
     loadsBody.appendChild(tr);
   });
 
@@ -408,7 +407,7 @@ function renderLoadsTable() {
 function renderSectionModalInputs() {
   const type = sectionTypeSelect.value;
   if (type === 'rectangle') {
-    sectionInputs.innerHTML = 
+    sectionInputs.innerHTML = `
       <div class="form-group">
         <label>Width b (mm)</label>
         <input type="number" id="sec_b" value="100" class="form-input">
@@ -417,16 +416,16 @@ function renderSectionModalInputs() {
         <label>Height h (mm)</label>
         <input type="number" id="sec_h" value="200" class="form-input">
       </div>
-    ;
+    `;
   } else if (type === 'solid_circle') {
-    sectionInputs.innerHTML = 
+    sectionInputs.innerHTML = `
       <div class="form-group">
         <label>Diameter d (mm)</label>
         <input type="number" id="sec_d" value="150" class="form-input">
       </div>
-    ;
+    `;
   } else if (type === 'hollow_circle') {
-    sectionInputs.innerHTML = 
+    sectionInputs.innerHTML = `
       <div class="form-group">
         <label>Outer Dia D (mm)</label>
         <input type="number" id="sec_do" value="150" class="form-input">
@@ -435,9 +434,9 @@ function renderSectionModalInputs() {
         <label>Inner Dia d (mm)</label>
         <input type="number" id="sec_di" value="130" class="form-input">
       </div>
-    ;
+    `;
   } else if (type === 'i_beam') {
-    sectionInputs.innerHTML = 
+    sectionInputs.innerHTML = `
       <div class="form-group">
         <label>Flange Width bf (mm)</label>
         <input type="number" id="sec_bf" value="150" class="form-input">
@@ -454,7 +453,7 @@ function renderSectionModalInputs() {
         <label>Web Thick tw (mm)</label>
         <input type="number" id="sec_tw" value="8" class="form-input">
       </div>
-    ;
+    `;
   }
 
   sectionInputs.querySelectorAll('input').forEach(inp => {
@@ -490,16 +489,15 @@ async function updateSectionCalculation() {
       const data = await res.json();
       const p = data.properties;
       currentCalculatedI = p.moment_of_inertia_1e6_mm4;
-      sectionResult.innerHTML = 
-        <div><strong>Moment of Inertia I:</strong>  &times; 10⁶ mm⁴ ( m⁴)</div>
-        <div><strong>Section Modulus Z:</strong>  cm³ | <strong>Area A:</strong>  cm²</div>
-      ;
+      sectionResult.innerHTML = `
+        <div><strong>Moment of Inertia I:</strong> ${p.moment_of_inertia_1e6_mm4} &times; 10⁶ mm⁴ (${(p.moment_of_inertia_m4).toExponential(3)} m⁴)</div>
+        <div><strong>Section Modulus Z:</strong> ${p.section_modulus_cm3} cm³ | <strong>Area A:</strong> ${p.area_cm2} cm²</div>
+      `;
     }
   } catch (err) {
     console.error(err);
   }
 }
-
 // 2D Live Schematic Canvas Rendering
 function drawSchematic() {
   if (!beamCanvas) return;
@@ -570,7 +568,7 @@ function drawSchematic() {
       ctx.fillStyle = '#94a3b8';
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(${s.position}m, sx, sy + 38);
+      ctx.fillText(`${s.position}m`, sx, sy + 38);
 
     } else if (s.type === 'roller') {
       ctx.fillStyle = '#38bdf8';
@@ -602,7 +600,7 @@ function drawSchematic() {
       ctx.fillStyle = '#94a3b8';
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(${s.position}m, sx, sy + 40);
+      ctx.fillText(`${s.position}m`, sx, sy + 40);
 
     } else if (s.type === 'fixed') {
       const isLeft = s.position <= L / 2;
@@ -632,7 +630,7 @@ function drawSchematic() {
       ctx.fillStyle = '#94a3b8';
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(Fixed (m), sx, beamY + 42);
+      ctx.fillText(`Fixed (${s.position}m)`, sx, beamY + 42);
     }
   });
 
@@ -661,7 +659,7 @@ function drawSchematic() {
 
       ctx.font = 'bold 11px JetBrains Mono, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(${l.magnitude} kN, lx, topY - 6);
+      ctx.fillText(`${l.magnitude} kN`, lx, topY - 6);
 
     } else if (l.type === 'udl') {
       const x1 = toCanvasX(l.start_pos);
@@ -703,7 +701,7 @@ function drawSchematic() {
 
         ctx.font = 'bold 11px JetBrains Mono, monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(w =  kN/m, (x1 + x2) / 2, topY - 6);
+        ctx.fillText(`w = ${l.start_magnitude} kN/m`, (x1 + x2) / 2, topY - 6);
       }
 
     } else if (l.type === 'uvl') {
@@ -742,7 +740,7 @@ function drawSchematic() {
         ctx.fillStyle = '#a855f7';
         ctx.font = 'bold 11px JetBrains Mono, monospace';
         ctx.textAlign = 'center';
-        ctx.fillText(${w1} →  kN/m, (x1 + x2) / 2, Math.min(y1, y2) - 6);
+        ctx.fillText(`${w1} → ${w2} kN/m`, (x1 + x2) / 2, Math.min(y1, y2) - 6);
       }
 
     } else if (l.type === 'moment') {
@@ -771,7 +769,7 @@ function drawSchematic() {
 
       ctx.font = 'bold 11px JetBrains Mono, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(${l.magnitude} kN·m, mx, my - radius - 6);
+      ctx.fillText(`${l.magnitude} kN·m`, mx, my - radius - 6);
     }
   });
 
@@ -795,7 +793,7 @@ function drawSchematic() {
   ctx.fillStyle = '#cbd5e1';
   ctx.font = 'bold 11px JetBrains Mono, monospace';
   ctx.textAlign = 'center';
-  ctx.fillText(Total Length L =  m, marginX + drawW / 2, dimY + 16);
+  ctx.fillText(`Total Length L = ${L} m`, marginX + drawW / 2, dimY + 16);
 }
 
 function drawGroundHatch(ctx, x1, x2, y) {
@@ -808,33 +806,119 @@ function drawGroundHatch(ctx, x1, x2, y) {
     ctx.stroke();
   }
 }
-
 // Main Calculation Trigger
 async function calculateBeam() {
+  const errorBanner = document.getElementById('errorBanner');
+  if (errorBanner) {
+    errorBanner.classList.add('hidden');
+    errorBanner.textContent = '';
+  }
+
   btnCalculate.disabled = true;
   btnCalculate.innerHTML = '<span class="btn-icon">⏳</span> Solving Equations...';
 
+  // Sync beam configuration from inputs
+  beamConfig.length = parseFloat(beamLengthInput.value) || 6.0;
+  beamConfig.elasticModulus = parseFloat(elasticModulusInput.value) || 200.0;
+  beamConfig.momentOfInertia = parseFloat(momentOfInertiaInput.value) || 83.3;
+
+  // Build clean supports from DOM
+  const cleanSupports = [];
+  const supRows = supportsBody.querySelectorAll('tr');
+  supRows.forEach((tr, idx) => {
+    const type = tr.querySelector('.sup-type')?.value || 'roller';
+    const pos = parseFloat(tr.querySelector('.sup-pos')?.value) || 0.0;
+    cleanSupports.push({
+      id: `S${idx + 1}`,
+      type: type,
+      position: Math.max(0, Math.min(beamConfig.length, pos))
+    });
+  });
+
+  const supportsToSend = cleanSupports.length > 0 ? cleanSupports : supportsList.map((s, idx) => ({
+    id: s.id || `S${idx + 1}`,
+    type: s.type,
+    position: parseFloat(s.position) || 0.0
+  }));
+
+  // Build clean loads from DOM
+  const cleanLoads = [];
+  const loadRows = loadsBody.querySelectorAll('tr');
+  loadRows.forEach((tr, idx) => {
+    const type = tr.querySelector('.load-type')?.value || 'point';
+    if (type === 'point') {
+      const mag = parseFloat(tr.querySelector('.load-mag')?.value) || 0.0;
+      const pos = parseFloat(tr.querySelector('.load-pos')?.value) || 0.0;
+      cleanLoads.push({
+        id: `L${idx + 1}`,
+        type: 'point',
+        magnitude: mag,
+        position: Math.max(0, Math.min(beamConfig.length, pos))
+      });
+    } else if (type === 'udl') {
+      const mag = parseFloat(tr.querySelector('.load-mag')?.value) || 0.0;
+      let x1 = parseFloat(tr.querySelector('.load-x1')?.value) || 0.0;
+      let x2 = parseFloat(tr.querySelector('.load-x2')?.value) || beamConfig.length;
+      if (x1 >= x2) {
+        x1 = 0.0;
+        x2 = beamConfig.length;
+      }
+      cleanLoads.push({
+        id: `L${idx + 1}`,
+        type: 'udl',
+        start_pos: x1,
+        end_pos: x2,
+        start_magnitude: mag,
+        end_magnitude: mag
+      });
+    } else if (type === 'uvl') {
+      const w1 = parseFloat(tr.querySelector('.load-w1')?.value) || 0.0;
+      const w2 = parseFloat(tr.querySelector('.load-w2')?.value) || 0.0;
+      let x1 = parseFloat(tr.querySelector('.load-x1')?.value) || 0.0;
+      let x2 = parseFloat(tr.querySelector('.load-x2')?.value) || beamConfig.length;
+      if (x1 >= x2) {
+        x1 = 0.0;
+        x2 = beamConfig.length;
+      }
+      cleanLoads.push({
+        id: `L${idx + 1}`,
+        type: 'uvl',
+        start_pos: x1,
+        end_pos: x2,
+        start_magnitude: w1,
+        end_magnitude: w2
+      });
+    } else if (type === 'moment') {
+      const mag = parseFloat(tr.querySelector('.load-mag')?.value) || 0.0;
+      const pos = parseFloat(tr.querySelector('.load-pos')?.value) || 0.0;
+      cleanLoads.push({
+        id: `L${idx + 1}`,
+        type: 'moment',
+        magnitude: mag,
+        position: Math.max(0, Math.min(beamConfig.length, pos))
+      });
+    }
+  });
+
+  const loadsToSend = cleanLoads.length > 0 ? cleanLoads : loadsList.map((l, idx) => ({
+    id: l.id || `L${idx + 1}`,
+    type: l.type,
+    magnitude: parseFloat(l.magnitude) || 0.0,
+    position: parseFloat(l.position) || 0.0,
+    start_pos: parseFloat(l.start_pos) || 0.0,
+    end_pos: parseFloat(l.end_pos) || beamConfig.length,
+    start_magnitude: parseFloat(l.start_magnitude) || 0.0,
+    end_magnitude: parseFloat(l.end_magnitude) || 0.0
+  }));
+
   const payload = {
     beam: {
-      length: parseFloat(beamLengthInput.value) || 6.0,
-      elastic_modulus: parseFloat(elasticModulusInput.value) || 200.0,
-      moment_of_inertia: parseFloat(momentOfInertiaInput.value) || 83.3
+      length: beamConfig.length,
+      elastic_modulus: beamConfig.elasticModulus,
+      moment_of_inertia: beamConfig.momentOfInertia
     },
-    supports: supportsList.map(s => ({
-      id: s.id,
-      type: s.type,
-      position: parseFloat(s.position) || 0.0
-    })),
-    loads: loadsList.map(l => ({
-      id: l.id,
-      type: l.type,
-      magnitude: parseFloat(l.magnitude) || 0.0,
-      position: parseFloat(l.position) || 0.0,
-      start_pos: parseFloat(l.start_pos) || 0.0,
-      end_pos: parseFloat(l.end_pos) || 0.0,
-      start_magnitude: parseFloat(l.start_magnitude) || 0.0,
-      end_magnitude: parseFloat(l.end_magnitude) || 0.0
-    }))
+    supports: supportsToSend,
+    loads: loadsToSend
   };
 
   try {
@@ -846,7 +930,11 @@ async function calculateBeam() {
 
     if (!res.ok) {
       const err = await res.json();
-      alert(Calculation error: );
+      const errMsg = err.detail || 'Calculation error. Verify support conditions and loads.';
+      if (errorBanner) {
+        errorBanner.textContent = '⚠️ ' + errMsg;
+        errorBanner.classList.remove('hidden');
+      }
       return;
     }
 
@@ -854,7 +942,10 @@ async function calculateBeam() {
     renderAnalysisResults(result);
 
   } catch (err) {
-    alert(Network / solver failure: );
+    if (errorBanner) {
+      errorBanner.textContent = '⚠️ Solver communication failure: ' + err.message;
+      errorBanner.classList.remove('hidden');
+    }
   } finally {
     btnCalculate.disabled = false;
     btnCalculate.innerHTML = '<span class="btn-icon">⚡</span> Calculate & Solve Diagrams';
@@ -864,31 +955,31 @@ async function calculateBeam() {
 // Render Results & Plots
 function renderAnalysisResults(res) {
   const maxDef = Math.abs(res.max_deflection_mm);
-  document.getElementById('valMaxDeflection').textContent = ${maxDef.toFixed(3)} mm;
-  document.getElementById('subMaxDeflection').textContent = t x =  m;
+  document.getElementById('valMaxDeflection').textContent = `${maxDef.toFixed(3)} mm`;
+  document.getElementById('subMaxDeflection').textContent = `at x = ${res.max_deflection_x.toFixed(2)} m`;
 
   const absMaxM = Math.max(Math.abs(res.max_moment_kNm), Math.abs(res.min_moment_kNm));
-  document.getElementById('valMaxMoment').textContent = ${absMaxM.toFixed(2)} kN·m;
-  document.getElementById('subMaxMoment').textContent = Range: [, +];
+  document.getElementById('valMaxMoment').textContent = `${absMaxM.toFixed(2)} kN·m`;
+  document.getElementById('subMaxMoment').textContent = `Range: [${res.min_moment_kNm.toFixed(1)}, +${res.max_moment_kNm.toFixed(1)}]`;
 
   const absMaxV = Math.max(Math.abs(res.max_shear_kN), Math.abs(res.min_shear_kN));
-  document.getElementById('valMaxShear').textContent = ${absMaxV.toFixed(2)} kN;
-  document.getElementById('subMaxShear').textContent = Range: [, +];
+  document.getElementById('valMaxShear').textContent = `${absMaxV.toFixed(2)} kN`;
+  document.getElementById('subMaxShear').textContent = `Range: [${res.min_shear_kN.toFixed(1)}, +${res.max_shear_kN.toFixed(1)}]`;
 
   const eq = res.equilibrium;
   const isOk = eq.is_equilibrated;
   document.getElementById('valEquilibrium').innerHTML = isOk
-    ? <span style="color: #10b981;">Balanced ✓</span>
-    : <span style="color: #f43f5e;">Unbalanced !</span>;
-  document.getElementById('subEquilibrium').textContent = ΔFy=kN, ΔM=kNm;
+    ? `<span style="color: #10b981;">Balanced ✓</span>`
+    : `<span style="color: #f43f5e;">Unbalanced !</span>`;
+  document.getElementById('subEquilibrium').textContent = `ΔFy=${eq.vertical_balance_error_kN.toFixed(3)}kN, ΔM=${eq.moment_balance_error_kNm.toFixed(3)}kNm`;
 
   const reactionsContainer = document.getElementById('reactionsContainer');
   reactionsContainer.innerHTML = '';
   res.reactions.forEach(r => {
     const chip = document.createElement('div');
     chip.className = 'reaction-chip';
-    const mStr = Math.abs(r.moment_kNm) > 0.001 ? , M =  kN·m : '';
-    chip.innerHTML = <strong> ( @ m):</strong> Ry =  kN;
+    const mStr = Math.abs(r.moment_kNm) > 0.001 ? `, M = ${r.moment_kNm.toFixed(2)} kN·m` : '';
+    chip.innerHTML = `<strong>${r.support_id} (${r.support_type} @ ${r.position}m):</strong> Ry = ${r.vertical_force_kN.toFixed(2)} kN${mStr}`;
     reactionsContainer.appendChild(chip);
   });
 
@@ -898,12 +989,12 @@ function renderAnalysisResults(res) {
     res.critical_points.forEach(cp => {
       const tr = document.createElement('tr');
       const badgeClass = cp.type.includes('deflection') ? 'badge-success' : (cp.type.includes('moment') ? 'badge' : '');
-      tr.innerHTML = 
-        <td><span class="badge "></span></td>
-        <td><strong> m</strong></td>
-        <td><strong> </strong></td>
-        <td></td>
-      ;
+      tr.innerHTML = `
+        <td><span class="badge ${badgeClass}">${formatEventName(cp.type)}</span></td>
+        <td><strong>${cp.position.toFixed(3)} m</strong></td>
+        <td><strong>${cp.value.toFixed(3)} ${cp.unit}</strong></td>
+        <td>${cp.description}</td>
+      `;
       criticalBody.appendChild(tr);
     });
   } else {
@@ -921,7 +1012,9 @@ function formatEventName(str) {
 }
 
 function renderChart(canvasId, label, xData, yData, color, unit) {
-  const ctx = document.getElementById(canvasId).getContext('2d');
+  const canvasEl = document.getElementById(canvasId);
+  if (!canvasEl) return;
+  const ctx = canvasEl.getContext('2d');
 
   if (chartInstances[canvasId]) {
     chartInstances[canvasId].destroy();
@@ -951,7 +1044,7 @@ function renderChart(canvasId, label, xData, yData, color, unit) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 400 },
+      animation: { duration: 300 },
       interaction: {
         mode: 'index',
         intersect: false
@@ -966,8 +1059,8 @@ function renderChart(canvasId, label, xData, yData, color, unit) {
           borderWidth: 1,
           padding: 8,
           callbacks: {
-            title: (items) => Span Position x =  m,
-            label: (item) => ${label}:  
+            title: (items) => `Span Position x = ${Number(items[0].parsed.x).toFixed(3)} m`,
+            label: (item) => `${label}: ${Number(item.parsed.y).toFixed(3)} ${unit}`
           }
         }
       },
@@ -986,7 +1079,7 @@ function renderChart(canvasId, label, xData, yData, color, unit) {
         y: {
           title: {
             display: true,
-            text: ${label} [],
+            text: `${label} [${unit}]`,
             color: '#64748b',
             font: { size: 10 }
           },
@@ -1009,8 +1102,7 @@ function hexToRgba(hex, alpha) {
       c = [c[0], c[0], c[1], c[1], c[2], c[2]];
     }
     c = '0x' + c.join('');
-    return 
-gba(,);
+    return `rgba(${[(c >> 16) & 255, (c >> 8) & 255, c & 255].join(',')},${alpha})`;
   }
   return hex;
 }
