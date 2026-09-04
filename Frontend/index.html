@@ -1,18 +1,1 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>RecoverAI — Payment Recovery</title><link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-<header><div><span class="tag">RAZORPAY AI BUILDATHON</span><h1>RecoverAI</h1><p>Agentic Payment Recovery Engine</p></div><div id="aiStatus" class="status">Checking AI…</div></header>
-<main>
-<section class="kpis"><article><small>Payments at risk</small><strong id="risk">₹0</strong></article><article><small>Recovery opportunities</small><strong id="count">0</strong></article><article><small>Actions executed</small><strong id="actions">0</strong></article><article><small>Recovery rate</small><strong id="rate">0%</strong></article></section>
-<section class="layout">
-<div class="panel"><div class="panel-head"><div><small>RECOVERY QUEUE</small><h2>Failed payments</h2></div><button onclick="loadAll()">Refresh</button></div><div id="payments"></div></div>
-<div class="panel"><div class="panel-head"><div><small>AGENT ACTIVITY</small><h2>Decision audit trail</h2></div></div><div id="history"><p class="muted">No recovery actions yet.</p></div></div>
-</section>
-<section class="panel explainer"><small>HOW IT WORKS</small><div class="steps"><span>1. Failed payment</span><b>→</b><span>2. LangChain analysis</span><b>→</b><span>3. Safe action</span><b>→</b><span>4. Audit outcome</span></div></section>
-</main>
-<div id="toast"></div><script src="/static/app.js"></script>
-</body></html>
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>RecoverAI</title><link rel='stylesheet' href='/style.css'></head><body><header><div><small>RAZORPAY AI BUILDATHON · REVENUE RECOVERY</small><h1>RecoverAI</h1><p>Agentic recovery for failed payments.</p></div><span class='pill'>LANGCHAIN + OPENAI</span></header><main><section class='metrics'><article><small>PAYMENTS AT RISK</small><b id='risk'>₹0</b></article><article><small>RECOVERED</small><b id='recovered'>₹0</b></article><article><small>RECOVERY RATE</small><b id='rate'>0%</b></article><article><small>AGENT ACTIONS</small><b id='actions'>0</b></article></section><section class='panel'><div class='title'><div><small>RECOVERY QUEUE</small><h2>Failed payments</h2></div><button onclick='load()'>Refresh</button></div><div id='payments'></div></section><section class='panel'><div class='title'><div><small>AUDIT TRAIL</small><h2>Recent decisions</h2></div></div><div id='audit'></div></section></main><script>const money=n=>'₹'+Number(n).toLocaleString('en-IN');async function load(){let [p,m]=await Promise.all([fetch('/api/payments').then(r=>r.json()),fetch('/api/metrics').then(r=>r.json())]);risk.textContent=money(m.at_risk);recovered.textContent=money(m.recovered);rate.textContent=(m.recovery_rate*100).toFixed(1)+'%';actions.textContent=m.actions;payments.innerHTML=p.map(x=>`<div class='row'><div><b>${x.customer}</b><span>${x.id} · ${x.reason.replaceAll('_',' ')}</span></div><strong>${money(x.amount)}</strong><button onclick='analyze("${x.id}")'>Analyze</button><button class='go' onclick='recover("${x.id}")'>Recover</button></div>`).join('');audit.innerHTML=m.audit.slice(0,8).map(x=>`<div class='audit'><b>${x.action}</b><span>${x.outcome} · ${money(x.details.amount)}</span></div>`).join('')||'<p class=muted>No actions yet.</p>'}async function analyze(id){let r=await fetch('/api/analyze/'+id,{method:'POST'}).then(r=>r.json());alert('AI decision: '+r.decision.action+'\nProbability: '+(r.decision.recovery_probability*100).toFixed(0)+'%\n\n'+r.decision.reason+'\n\nNext: '+r.decision.next_step)}async function recover(id){let r=await fetch('/api/recover/'+id,{method:'POST'}).then(r=>r.json());alert('Action: '+r.decision.action+'\nOutcome: '+r.outcome);load()}load()</script></body></html>

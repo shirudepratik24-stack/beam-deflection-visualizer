@@ -1,81 +1,102 @@
-import json
-import os
-import sqlite3
+import json, os, sqlite3, uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-
-try:
-    from langchain_openai import ChatOpenAI
-    from langchain_core.prompts import ChatPromptTemplate
-except ImportError:
-    ChatOpenAI = None
-    ChatPromptTemplate = None
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
 
 load_dotenv()
-BASE = Path(__file__).parent
-DB = BASE / "recoverai.db"
-app = FastAPI(title="RecoverAI", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-app.mount("/static", StaticFiles(directory=str(BASE / "Frontend")), name="static")
+DB = Path('recoverai.db')
+app = FastAPI(title='RecoverAI', version='1.0.0')
+app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])
+
 PAYMENTS = [
- {"id":"pay_1001","customer":"Aarav Mehta","amount":2499,"currency":"INR","reason":"insufficient_funds","attempts":1,"days":0,"email":"aarav@example.com"},
- {"id":"pay_1002","customer":"Priya Shah","amount":8999,"currency":"INR","reason":"authentication_required","attempts":1,"days":1,"email":"priya@example.com"},
- {"id":"pay_1003","customer":"Rohan Patil","amount":1499,"currency":"INR","reason":"network_error","attempts":2,"days":0,"email":"rohan@example.com"},
- {"id":"pay_1004","customer":"Neha Kulkarni","amount":12999,"currency":"INR","reason":"card_declined","attempts":3,"days":3,"email":"neha@example.com"},
- {"id":"pay_1005","customer":"Vikram Joshi","amount":3999,"currency":"INR","reason":"insufficient_funds","attempts":1,"days":2,"email":"vikram@example.com"},
+ {'id':'pay_1001','customer':'Aarav Sharma','email':'aarav@example.com','amount':2499,'reason':'insufficient_funds','attempts':1,'days_since':1},
+ {'id':'pay_1002','customer':'Priya Patil','email':'priya@example.com','amount':8999,'reason':'authentication_required','attempts':1,'days_since':2},
+ {'id':'pay_1003','customer':'Rahul Joshi','email':'rahul@example.com','amount':1499,'reason':'network_error','attempts':2,'days_since':1},
+ {'id':'pay_1004','customer':'Sneha Kulkarni','email':'sneha@example.com','amount':12999,'reason':'card_expired','attempts':1,'days_since':5},
+ {'id':'pay_1005','customer':'Vikram Singh','email':'vikram@example.com','amount':5999,'reason':'insufficient_funds','attempts':2,'days_since':3},
 ]
-class RecoveryRequest(BaseModel): payment_id: str
+
+class Decision(BaseModel):
+    action: Literal['smart_retry','customer_nudge','authentication_reminder','human_review']
+    recovery_probability: float = Field(ge=0, le=1)
+    priority: Literal['low','medium','high','critical']
+    reason: str
+    next_step: str
+
 
 def init_db():
- with sqlite3.connect(DB) as c: c.execute("CREATE TABLE IF NOT EXISTS actions (id INTEGER PRIMARY KEY AUTOINCREMENT,payment_id TEXT,action TEXT,confidence REAL,rationale TEXT,outcome TEXT,created_at TEXT)")
+    with sqlite3.connect(DB) as c:
+        c.execute('CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, payment_id TEXT, action TEXT, outcome TEXT, created_at TEXT, source TEXT, details TEXT)')
+init_db()
 
-def fallback(p):
- r=p["reason"]
- if r=="authentication_required": return {"action":"authentication_reminder","confidence":.94,"rationale":"Issuer authentication is required; remind the customer rather than blindly retrying."}
- if r=="network_error" and p["attempts"]<3: return {"action":"smart_retry","confidence":.88,"rationale":"A transient network error with limited attempts is a reasonable retry candidate."}
- if r=="insufficient_funds": return {"action":"customer_nudge","confidence":.91,"rationale":"The customer likely needs to restore available balance before another attempt."}
- return {"action":"human_review","confidence":.72,"rationale":"Repeated or ambiguous declines should not be blindly retried."}
 
-def ai_decide(p):
- if not os.getenv("OPENAI_API_KEY") or ChatOpenAI is None: return fallback(p),"deterministic_fallback"
- try:
-  llm=ChatOpenAI(model=os.getenv("OPENAI_MODEL","gpt-4o-mini"),temperature=0)
-  prompt=ChatPromptTemplate.from_messages([("system","You are a payment recovery controller. Choose exactly one: smart_retry, customer_nudge, authentication_reminder, human_review. Be conservative. Never claim real payment execution. Return JSON with action, confidence 0-1, rationale."),("human","Payment: {payment}")])
-  result=(prompt|llm).invoke({"payment":json.dumps(p)})
-  text=result.content if isinstance(result.content,str) else str(result.content)
-  data=json.loads(text.replace("```json","").replace("```","").strip())
-  if data.get("action") not in {"smart_retry","customer_nudge","authentication_reminder","human_review"}: raise ValueError("invalid action")
-  data["confidence"]=max(0,min(1,float(data.get("confidence",0))))
-  return data,"langchain_openai"
- except Exception: return fallback(p),"fallback_after_ai_error"
+def deterministic(p):
+    if p['reason']=='authentication_required': return Decision(action='authentication_reminder', recovery_probability=.82, priority='high', reason='The issuer requires customer authentication before another successful attempt.', next_step='Ask the customer to complete authentication, then retry.')
+    if p['reason']=='card_expired': return Decision(action='human_review', recovery_probability=.18, priority='critical', reason='An expired card should not be retried automatically.', next_step='Request an updated payment method or route to support.')
+    if p['reason']=='network_error' and p['attempts'] < 3: return Decision(action='smart_retry', recovery_probability=.68, priority='medium', reason='Transient network failures can recover on a controlled retry.', next_step='Retry once with exponential backoff.')
+    if p['reason']=='insufficient_funds': return Decision(action='customer_nudge', recovery_probability=.54, priority='high', reason='A balance-related failure is more likely to recover after customer action.', next_step='Notify the customer and offer a retry window.')
+    return Decision(action='human_review', recovery_probability=.25, priority='medium', reason='No safe automated recovery policy matched this case.', next_step='Send to operations for review.')
 
-def simulate(action):
- return {"smart_retry":"simulated_retry_queued","customer_nudge":"simulated_message_queued","authentication_reminder":"simulated_authentication_request","human_review":"escalated_to_human"}[action]
 
-@app.on_event("startup")
-def startup(): init_db()
-@app.get("/api/health")
-def health(): return {"status":"ok","ai_configured":bool(os.getenv("OPENAI_API_KEY"))}
-@app.get("/api/payments")
+def decide(p):
+    key = os.getenv('OPENAI_API_KEY')
+    if not key: return deterministic(p), 'fallback'
+    try:
+        llm = ChatOpenAI(model=os.getenv('OPENAI_MODEL','gpt-4o-mini'), temperature=0)
+        prompt = ChatPromptTemplate.from_messages([('system','You are a conservative payment recovery controller. Never invent payment facts. Choose exactly one bounded action. Do not authorize refunds, transfers, or irreversible actions. Return structured output.'),('human','Payment: {payment}')])
+        chain = prompt | llm.with_structured_output(Decision)
+        return chain.invoke({'payment': json.dumps(p)}), 'langchain'
+    except Exception:
+        return deterministic(p), 'fallback'
+
+
+def record(payment_id, action, outcome, source, details):
+    with sqlite3.connect(DB) as c:
+        c.execute('INSERT INTO audit VALUES (?,?,?,?,?,?,?)',(str(uuid.uuid4()),payment_id,action,outcome,datetime.now(timezone.utc).isoformat(),source,json.dumps(details)))
+
+@app.get('/api/health')
+def health(): return {'status':'ok','service':'RecoverAI'}
+
+@app.get('/api/payments')
 def payments(): return PAYMENTS
-@app.post("/api/recover")
-def recover(req:RecoveryRequest):
- p=next((x for x in PAYMENTS if x["id"]==req.payment_id),None)
- if not p: raise HTTPException(404,"Payment not found")
- decision,engine=ai_decide(p); outcome=simulate(decision["action"]); now=datetime.now(timezone.utc).isoformat()
- with sqlite3.connect(DB) as c: c.execute("INSERT INTO actions(payment_id,action,confidence,rationale,outcome,created_at) VALUES(?,?,?,?,?,?)",(p["id"],decision["action"],decision["confidence"],decision["rationale"],outcome,now))
- return {"payment":p,"decision":decision,"engine":engine,"outcome":outcome,"timestamp":now}
-@app.get("/api/history")
-def history():
- with sqlite3.connect(DB) as c:
-  c.row_factory=sqlite3.Row
-  return [dict(x) for x in c.execute("SELECT * FROM actions ORDER BY id DESC LIMIT 50").fetchall()]
-@app.get("/")
-def home(): return FileResponse(BASE/"Frontend"/"index.html")
+
+@app.get('/api/payments/{payment_id}')
+def payment(payment_id: str):
+    p=next((x for x in PAYMENTS if x['id']==payment_id),None)
+    if not p: raise HTTPException(404,'Payment not found')
+    return p
+
+@app.post('/api/analyze/{payment_id}')
+def analyze(payment_id: str):
+    p=next((x for x in PAYMENTS if x['id']==payment_id),None)
+    if not p: raise HTTPException(404,'Payment not found')
+    d,source=decide(p)
+    return {'payment':p,'decision':d.model_dump(),'source':source}
+
+@app.post('/api/recover/{payment_id}')
+def recover(payment_id: str):
+    p=next((x for x in PAYMENTS if x['id']==payment_id),None)
+    if not p: raise HTTPException(404,'Payment not found')
+    d,source=decide(p)
+    outcomes={'smart_retry':'recovered','customer_nudge':'message_sent','authentication_reminder':'authentication_requested','human_review':'queued_for_human'}
+    outcome=outcomes[d.action]
+    record(payment_id,d.action,outcome,source,{'amount':p['amount'],'reason':p['reason']})
+    return {'payment_id':payment_id,'amount':p['amount'],'decision':d.model_dump(),'outcome':outcome,'source':source}
+
+@app.get('/api/metrics')
+def metrics():
+    with sqlite3.connect(DB) as c:
+        rows=c.execute('SELECT action,outcome,details FROM audit ORDER BY created_at DESC').fetchall()
+    recovered=sum(json.loads(r[2]).get('amount',0) for r in rows if r[1]=='recovered')
+    at_risk=sum(p['amount'] for p in PAYMENTS)
+    return {'payments':len(PAYMENTS),'at_risk':at_risk,'actions':len(rows),'recovered':recovered,'recovery_rate':round(recovered/at_risk,4) if at_risk else 0,'audit':[{'action':r[0],'outcome':r[1],'details':json.loads(r[2])} for r in rows]}
+
+app.mount('/', StaticFiles(directory='Frontend', html=True), name='frontend')
