@@ -1,57 +1,65 @@
-﻿# Student Directory — FastAPI + Vanilla JS
+# RecoverAI — Agentic Payment Recovery Engine
 
-A simple full-stack Student Management System built with **FastAPI** (Python) on the backend and **HTML/CSS/JavaScript** on the frontend.
+Razorpay AI Buildathon project for **AI Revenue Recovery**.
 
-## Features
+RecoverAI analyzes failed payments, estimates recovery potential, selects a safe recovery action with LangChain, simulates the action, and records an auditable outcome.
 
-- View all students
-- Search student by ID
-- Filter students by course
-- Clean, responsive UI
+## What it demonstrates
 
-## Project Structure
+- LangChain + OpenAI structured decision making
+- Tool-style payment recovery actions
+- Explicit safety boundary: the demo never moves real money
+- SQLite audit trail
+- FastAPI backend
+- Browser dashboard
+- Failure handling and deterministic fallback
 
-`
-FastAPI/
-├── main.py              # FastAPI backend
-├── Frontend/
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
-└── .gitignore
-`
+## Run locally
 
-## Setup & Run
-
-### 1. Create & activate virtual environment
-`ash
+```bash
 python -m venv .venv
-.venv\Scripts\activate
-`
+# Windows: .venv\\Scripts\\activate
+# macOS/Linux: source .venv/bin/activate
+pip install -r requirements.txt
+copy .env.example .env   # Windows
+# cp .env.example .env  # macOS/Linux
+```
 
-### 2. Install dependencies
-`ash
-pip install fastapi uvicorn
-`
+Put your OpenAI API key in `.env` as `OPENAI_API_KEY=...`.
 
-### 3. Start the server
-`ash
+```bash
 uvicorn main:app --reload
-`
+```
 
-### 4. Open the frontend
-Open `Frontend/index.html` in your browser.
+Open http://127.0.0.1:8000
 
-## API Endpoints
+## Architecture
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | / | Welcome message |
-| GET | /students | Get all students |
-| GET | /students?course={name} | Filter by course |
-| GET | /students/{id} | Get student by ID |
+```text
+Failed Payment -> Recovery Agent -> Risk/Context Analysis -> Action Selection
+                                      |                     |
+                                      v                     v
+                                  Audit DB           Safe Simulator
+                                      \_____________________/
+                                                |
+                                           Dashboard
+```
 
-## Tech Stack
+## Demo flow
 
-- **Backend:** Python, FastAPI, Uvicorn
-- **Frontend:** HTML5, CSS3, Vanilla JavaScript
+1. Open the dashboard.
+2. Select a failed payment.
+3. Click **Recover payment**.
+4. LangChain produces a structured recovery decision.
+5. The safe simulator executes the selected action.
+6. The result and decision are written to SQLite.
+
+## Buildathon positioning
+
+**Problem:** failed payments create avoidable revenue leakage.
+
+**AI judgment:** the model decides among retry, customer nudge, authentication reminder, or human review; simple validation and safety checks remain deterministic code.
+
+**Failure recovery:** if the AI call fails, the system uses a conservative deterministic fallback instead of crashing or inventing a payment outcome.
+
+**Important:** this repository is a hackathon demonstration. It does not connect to production payment rails and does not execute real refunds, captures, or retries.
