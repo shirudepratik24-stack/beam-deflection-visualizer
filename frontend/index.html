@@ -1,0 +1,313 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beam Deflection Visualizer — SFD, BMD & Elastic Deflection</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Chart.js for high performance diagrams -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-wrapper">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="brand">
+          <div class="brand-icon">📐</div>
+          <div class="brand-text">
+            <h1>Beam Deflection Visualizer</h1>
+            <p>Shear Force (SFD), Bending Moment (BMD), Slope & Elastic Curve Analyzer</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <div class="preset-group">
+            <label for="presetSelect">Preset Cases:</label>
+            <select id="presetSelect" class="select-input">
+              <option value="" disabled selected>-- Select an Engineering Preset --</option>
+            </select>
+          </div>
+          <button id="btnExport" class="btn btn-secondary" title="Export analysis report">
+            <span>📷 Export</span>
+          </button>
+          <a href="/docs" target="_blank" class="btn btn-secondary api-badge">API Docs</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-layout">
+      <!-- Left Panel: Input Controls -->
+      <section class="panel input-panel">
+        <div class="panel-header">
+          <h2>Parameters & Setup</h2>
+          <button id="btnReset" class="btn-text">Reset</button>
+        </div>
+
+        <!-- Beam Parameters -->
+        <div class="card">
+          <div class="card-header">
+            <h3>1. Beam Properties</h3>
+            <button id="btnSectionCalc" class="btn-small" title="Calculate I from cross-section dimensions">
+              ⌗ Section Calc
+            </button>
+          </div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="beamLength">Span Length <em>L</em> (m)</label>
+                <input type="number" id="beamLength" value="6.0" min="0.1" step="0.5" class="form-input">
+              </div>
+              <div class="form-group">
+                <label for="materialSelect">Material</label>
+                <select id="materialSelect" class="form-input">
+                  <option value="structural_steel">Steel (A36, 200 GPa)</option>
+                  <option value="stainless_steel">Stainless Steel (193 GPa)</option>
+                  <option value="aluminum_6061">Aluminum 6061 (69 GPa)</option>
+                  <option value="structural_timber">Timber (12 GPa)</option>
+                  <option value="concrete_c30">Concrete C30 (30 GPa)</option>
+                  <option value="custom">Custom Modulus</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="elasticModulus">Young's Modulus <em>E</em> (GPa)</label>
+                <input type="number" id="elasticModulus" value="200.0" min="0.1" step="1.0" class="form-input">
+              </div>
+              <div class="form-group">
+                <label for="momentOfInertia">Inertia <em>I</em> (10⁶ mm⁴)</label>
+                <input type="number" id="momentOfInertia" value="83.3" min="0.01" step="0.5" class="form-input">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Supports Manager -->
+        <div class="card">
+          <div class="card-header">
+            <h3>2. Supports</h3>
+            <button id="btnAddSupport" class="btn-small btn-primary">+ Add Support</button>
+          </div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table class="data-table" id="supportsTable">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Position <em>x</em> (m)</th>
+                    <th style="width: 40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="supportsBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+            <p class="hint-text">Supported: Pin (prevents Δy), Roller (prevents Δy), Fixed (prevents Δy & rotation).</p>
+          </div>
+        </div>
+
+        <!-- Loads Manager -->
+        <div class="card">
+          <div class="card-header">
+            <h3>3. Applied Loads</h3>
+            <button id="btnAddLoad" class="btn-small btn-primary">+ Add Load</button>
+          </div>
+          <div class="card-body">
+            <div class="table-wrapper">
+              <table class="data-table" id="loadsTable">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Magnitude</th>
+                    <th>Position / Span (m)</th>
+                    <th style="width: 40px;"></th>
+                  </tr>
+                </thead>
+                <tbody id="loadsBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+            <p class="hint-text">Downwards loads are positive (+). Point (kN), UDL/UVL (kN/m), Moment (kN·m).</p>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button id="btnCalculate" class="btn btn-calculate">
+          <span class="btn-icon">⚡</span> Calculate & Solve Diagrams
+        </button>
+
+        <!-- Section Calculator Modal (Hidden by default) -->
+        <div id="sectionModal" class="modal-backdrop hidden">
+          <div class="modal-card">
+            <div class="modal-header">
+              <h3>Cross-Section Inertia (I) Calculator</h3>
+              <button id="btnCloseModal" class="btn-close">&times;</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label for="sectionTypeSelect">Section Profile</label>
+                <select id="sectionTypeSelect" class="form-input">
+                  <option value="rectangle">Solid Rectangle (b x h)</option>
+                  <option value="solid_circle">Solid Circle (diameter d)</option>
+                  <option value="hollow_circle">Hollow Pipe (OD x ID)</option>
+                  <option value="i_beam">I-Beam (bf, h, tf, tw)</option>
+                </select>
+              </div>
+              <div id="sectionInputs" class="form-grid">
+                <!-- Dynamically populated -->
+              </div>
+              <div id="sectionResult" class="calc-result-box">
+                <!-- Displays computed I and Z -->
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button id="btnApplySection" class="btn btn-primary">Apply Inertia to Beam</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel: Visualizer & Results -->
+      <section class="panel visualizer-panel">
+        <!-- Live Beam Schematic Canvas -->
+        <div class="card schematic-card">
+          <div class="card-header">
+            <h3>Beam Schematic & Loading Diagram</h3>
+            <span class="badge" id="beamStatusBadge">Real-time Preview</span>
+          </div>
+          <div class="canvas-container">
+            <canvas id="beamCanvas" width="900" height="220"></canvas>
+          </div>
+        </div>
+
+        <!-- Metric Cards Grid -->
+        <div class="metrics-grid">
+          <div class="metric-card metric-deflection">
+            <div class="metric-label">Max Deflection (δ<sub>max</sub>)</div>
+            <div class="metric-value" id="valMaxDeflection">--</div>
+            <div class="metric-sub" id="subMaxDeflection">Position x = --</div>
+          </div>
+          <div class="metric-card metric-moment">
+            <div class="metric-label">Max Bending Moment (M<sub>max</sub>)</div>
+            <div class="metric-value" id="valMaxMoment">--</div>
+            <div class="metric-sub" id="subMaxMoment">Hogging/Sagging peak</div>
+          </div>
+          <div class="metric-card metric-shear">
+            <div class="metric-label">Max Shear Force (V<sub>max</sub>)</div>
+            <div class="metric-value" id="valMaxShear">--</div>
+            <div class="metric-sub" id="subMaxShear">Range: [--, --]</div>
+          </div>
+          <div class="metric-card metric-reactions">
+            <div class="metric-label">Static Equilibrium</div>
+            <div class="metric-value" id="valEquilibrium">--</div>
+            <div class="metric-sub" id="subEquilibrium">ΣFy = 0, ΣM = 0</div>
+          </div>
+        </div>
+
+        <!-- Support Reactions Box -->
+        <div class="card reactions-card">
+          <div class="card-header">
+            <h3>Computed Support Reactions</h3>
+          </div>
+          <div class="reactions-list" id="reactionsContainer">
+            <div class="empty-state">No calculation yet. Click "Calculate" to solve.</div>
+          </div>
+        </div>
+
+        <!-- Engineering Diagrams (SFD, BMD, Elastic Curve, Slope) -->
+        <div class="card charts-card">
+          <div class="charts-header">
+            <h3>Engineering Analysis Diagrams</h3>
+            <div class="chart-toggles">
+              <button class="tab-btn active" data-chart="sfd">Shear Force (SFD)</button>
+              <button class="tab-btn active" data-chart="bmd">Bending Moment (BMD)</button>
+              <button class="tab-btn active" data-chart="deflection">Elastic Curve (δ)</button>
+              <button class="tab-btn" data-chart="slope">Slope (θ)</button>
+            </div>
+          </div>
+
+          <div class="charts-stack" id="chartsStack">
+            <!-- Chart 1: SFD -->
+            <div class="chart-box" id="boxSFD">
+              <div class="chart-title">
+                <span>Shear Force Diagram (SFD)</span>
+                <span class="chart-unit">[kN]</span>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chartSFD"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 2: BMD -->
+            <div class="chart-box" id="boxBMD">
+              <div class="chart-title">
+                <span>Bending Moment Diagram (BMD)</span>
+                <span class="chart-unit">[kN·m]</span>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chartBMD"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 3: Deflection Curve -->
+            <div class="chart-box" id="boxDeflection">
+              <div class="chart-title">
+                <span>Elastic Deflection Curve (v)</span>
+                <span class="chart-unit">[mm]</span>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chartDeflection"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 4: Slope Curve -->
+            <div class="chart-box hidden" id="boxSlope">
+              <div class="chart-title">
+                <span>Rotation / Slope Diagram (θ)</span>
+                <span class="chart-unit">[mrad]</span>
+              </div>
+              <div class="chart-canvas-wrap">
+                <canvas id="chartSlope"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Critical Points Table -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Key Critical Points & Singularity Locations</h3>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table" id="criticalTable">
+              <thead>
+                <tr>
+                  <th>Event Type</th>
+                  <th>Position <em>x</em> (m)</th>
+                  <th>Value</th>
+                  <th>Engineering Significance</th>
+                </tr>
+              </thead>
+              <tbody id="criticalBody">
+                <tr><td colspan="4" class="text-center">Run calculation to inspect critical inflection points and zero crossings.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Beam Deflection Visualizer &bull; Structural Analysis & Elastic Curve Simulator &bull; FastAPI + Euler-Bernoulli Engine</p>
+    </footer>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

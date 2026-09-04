@@ -1,15 +1,11 @@
-# Python
+﻿.venv/
 __pycache__/
-*.py[cod]
-.venv/
-venv/
-*.egg-info/
-dist/
-build/
-*.log
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
 .env
-.env.*
-recoverai.db
-.vscode/
-.idea/
 .DS_Store
+*.log
