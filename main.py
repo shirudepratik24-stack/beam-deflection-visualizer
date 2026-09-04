@@ -70,5 +70,25 @@ def calculate_beam(req: BeamAnalysisRequest):
 def serve_index():
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        return FileResponse(str(index_file), media_type="text/html")
     return JSONResponse({"message": "Beam Deflection Visualizer API is active. Open /docs for Swagger."})
+
+@app.get("/css/style.css", include_in_schema=False)
+def serve_css():
+    css_file = FRONTEND_DIR / "css" / "style.css"
+    if css_file.exists():
+        return FileResponse(str(css_file), media_type="text/css")
+    return JSONResponse(status_code=404, content={"error": "style.css not found"})
+
+@app.get("/js/app.js", include_in_schema=False)
+def serve_js():
+    js_file = FRONTEND_DIR / "js" / "app.js"
+    if js_file.exists():
+        return FileResponse(str(js_file), media_type="application/javascript")
+    return JSONResponse(status_code=404, content={"error": "app.js not found"})
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=False)
+
